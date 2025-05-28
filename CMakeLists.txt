@@ -17,6 +17,7 @@ include_directories(
     /workspace/hldk/include/specs/misc
     /workspace/hl-thunk/include/specs/common
     /usr/include
+    /usr/include/drm
     )
 
 link_directories(
@@ -25,7 +26,8 @@ link_directories(
     /usr/lib/x86_64-linux-gnu
 )
 
-#file(GLOB HLTHUNK_LIBRARIES "/workspace/hl-thunk/build/lib/*.so" "/workspace/hl-thunk/build/lib/*.a")
+file(GLOB HLTHUNK_LIBRARIES "/workspace/hl-thunk/build/lib/*.so" "/workspace/hl-thunk/build/lib/*.a")
+file(GLOB HLTHUNK_TEST_LIBRARIES "/workspace/hl-thunk/tests/build/*.so" "/workspace/hl-thunk/test/build/*.a") 
 
 add_executable(client client.c rdma_common.c)
 target_link_libraries(client ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
@@ -33,8 +35,18 @@ target_link_libraries(client ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
 add_executable(server server.c rdma_common.c)
 target_link_libraries(server ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
 
-# add_executable(dmabuf dmabuf.c rdma_common.c)
-# target_link_libraries(dmabuf ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
+
+find_library(CMOCKA_LIBRARY NAMES cmocka libcmocka)
+if (NOT CMOCKA_LIBRARY)
+    message(FATAL_ERROR "CMocka library not found")
+endif()
+
+#add_executable(hpu hpu.c)
+#target_link_libraries(hpu PRIVATE hl-thunk-tests ${CMOCKA_LIBRARY})
+
+add_executable(hpu hpu.c)
+target_link_libraries(hpu PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
 
 
 add_custom_command(TARGET client server 
