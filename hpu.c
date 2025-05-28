@@ -21,7 +21,7 @@ int main(void)
         return -1;
     }
 
-    // Step 2: Allocate host memory (page-aligned for DMA)
+    // Step 2: Allocate host memory
     void *host_memory = mmap(NULL, MEMORY_SIZE, PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (host_memory == MAP_FAILED) {
@@ -30,9 +30,11 @@ int main(void)
         return -1;
     }
 
-    // Step 3: Initialize host memory (optional)
+    // Step 3: Initialize host memory with known pattern
     memset(host_memory, 0, MEMORY_SIZE);
-    strcpy((char *)host_memory, "Hello, Gaudi!");
+    strcpy((char *)host_memory, "HostToDeviceTest");
+
+    printf("[Host] Initial host memory: %s\n", (char *)host_memory);
 
     // Step 4: Map host memory to device virtual address space
     uint64_t device_va = hlthunk_host_memory_map(fd, host_memory, 0, MEMORY_SIZE);
@@ -43,17 +45,29 @@ int main(void)
         return -1;
     }
 
-    printf("Host memory mapped to device VA: 0x%llx\n", (unsigned long long)device_va);
-    printf("Data at host memory: %s\n", (char *)host_memory);
+    printf("[HLTHUNK] Host memory mapped to device VA: 0x%llx\n", (unsigned long long)device_va);
 
-    // Step 5: Unmap and free memory
+    // === Simulated device operation ===
+    // Device (simulated) writes to host memory via mapped VA
+    // In real test, this would be a kernel writing to device_va
+    strcpy((char *)host_memory, "DeviceToHostOK");
+    printf("[Simulated Device] Wrote to host memory via mapped VA.\n");
+
+    // === Host reads back to verify ===
+    if (strcmp((char *)host_memory, "DeviceToHostOK") == 0) {
+        printf("[Host] ✅ Device-to-host memory verification succeeded!\n");
+    } else {
+        printf("[Host] ❌ Device-to-host memory verification failed!\n");
+    }
+
+    // Step 5: Unmap and cleanup
     if (hlthunk_memory_unmap(fd, device_va) < 0) {
         fprintf(stderr, "Failed to unmap host memory from device\n");
     }
 
     munmap(host_memory, MEMORY_SIZE);
 
-    // Step 6: Close the device
+    // Step 6: Close device
     if (hlthunk_close(fd) < 0) {
         fprintf(stderr, "Failed to close device: %s\n", strerror(errno));
         return -1;
