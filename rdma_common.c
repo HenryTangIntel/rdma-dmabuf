@@ -366,7 +366,7 @@ int resources_create(struct resources *res) {
     }
 
     // Fallback to posix_memalign if all else fails
-    #if 0
+ 
     if (!res->mr) {
         fprintf(stderr, "Falling back to posix_memalign allocation\n");
         if (res->buf) {
@@ -393,7 +393,7 @@ int resources_create(struct resources *res) {
             ERR_DIE("ibv_reg_mr (posix_memalign) failed: %s (errno=%d)\n", strerror(errno), errno);
         INFO("posix_memalign memory region registered: lkey=%u, rkey=%u\n", res->mr->lkey, res->mr->rkey);
     }
-    #endif
+    
 
     // Initialize buffer with message for server
     if (!config.server_name)
