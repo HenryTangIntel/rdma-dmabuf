@@ -54,6 +54,10 @@ target_link_libraries(hpu_dma_buf PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARI
 add_executable(hpu_dmabuf_verbs hpu_dmabuf_verbs.c)
 target_link_libraries(hpu_dmabuf_verbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
 
+add_executable(clean_dmabufverbs clean_dmabufverbs.c)
+target_link_libraries(clean_dmabufverbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
+
 
 
 
