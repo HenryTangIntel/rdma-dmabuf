@@ -346,8 +346,7 @@ int resources_create(struct resources *res) {
     
     // Register memory region
     mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
-    
-    if (res->buf && res->dma_fd >= 0 && res->buf_type == BUFFER_TYPE_DMA_HEAP) {
+    if (res->buf && res->dma_fd >= 0 && (res->buf_type == BUFFER_TYPE_DMA_HEAP || res->buf_type == BUFFER_TYPE_GAUDI)) {
         // Try to register as DMA-buf
         res->mr = ibv_reg_dmabuf_mr(res->pd, 0, res->buf_size, (uint64_t)res->buf, res->dma_fd, mr_flags);
         if (!res->mr) {
