@@ -36,10 +36,6 @@ add_executable(server server.c rdma_common.c)
 target_link_libraries(server ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
 
 
-find_library(CMOCKA_LIBRARY NAMES cmocka libcmocka)
-if (NOT CMOCKA_LIBRARY)
-    message(FATAL_ERROR "CMocka library not found")
-endif()
 
 #add_executable(hpu hpu.c)
 #target_link_libraries(hpu PRIVATE hl-thunk-tests ${CMOCKA_LIBRARY})
@@ -57,6 +53,15 @@ target_link_libraries(hpu_dmabuf_verbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LI
 add_executable(clean_dmabufverbs clean_dmabufverbs.c)
 target_link_libraries(clean_dmabufverbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
 
+
+add_executable(claudclean claudclean.c)
+target_link_libraries(claudclean PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
+
+add_executable(rdma_dmabuf_server rdma_dmabuf_server.c rdma_dmabuf_common.c)
+target_link_libraries(rdma_dmabuf_server PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+add_executable(rdma_dmabuf_client rdma_dmabuf_client.c rdma_dmabuf_common.c)
+target_link_libraries(rdma_dmabuf_client PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
 
 
 
