@@ -21,6 +21,26 @@
 #include <sys/mman.h>
 #include <linux/dma-heap.h>
 #include <sys/ioctl.h>
+#include <stdbool.h>
+
+// Include hlthunk for Intel Gaudi support
+#ifdef HAVE_HLTHUNK
+#include "hlthunk.h"
+#endif
+
+// DMA-buf synchronization structures (if not available in system headers)
+#ifndef DMA_BUF_IOCTL_SYNC
+struct dma_buf_sync {
+    uint64_t flags;
+};
+
+#define DMA_BUF_SYNC_READ      (1 << 0)
+#define DMA_BUF_SYNC_WRITE     (2 << 0)
+#define DMA_BUF_SYNC_RW        (DMA_BUF_SYNC_READ | DMA_BUF_SYNC_WRITE)
+#define DMA_BUF_SYNC_START     (0 << 2)
+#define DMA_BUF_SYNC_END       (1 << 2)
+#define DMA_BUF_IOCTL_SYNC     _IOW('b', 0, struct dma_buf_sync)
+#endif
 
 #define MAX_POLL_CQ_TIMEOUT 2000
 #define MSG "This is alice, how are you?"
@@ -61,12 +81,20 @@ static inline uint64_t ntohll(uint64_t x) { return x; }
         }                                                                      \
     }
 
+enum buffer_type {
+    BUFFER_TYPE_MALLOC,
+    BUFFER_TYPE_DMA_HEAP,
+    BUFFER_TYPE_GAUDI
+};
+
 struct config_t {
     const char *dev_name;
     char *server_name;
     uint32_t tcp_port;
     int ib_port;
     int gid_idx;
+    int use_gaudi;  // 0 = auto, 1 = force gaudi, -1 = disable gaudi
+    size_t buffer_size;  // Allow custom buffer size
 };
 
 struct cm_con_data_t {
@@ -76,6 +104,16 @@ struct cm_con_data_t {
     uint16_t lid;
     uint8_t gid[16];
 } __attribute__((packed));
+
+#ifdef HAVE_HLTHUNK
+struct gaudi_context {
+    int gaudi_fd;
+    uint64_t gaudi_handle;
+    uint64_t device_va;
+    uint64_t host_device_va;
+    struct hlthunk_hw_ip_info hw_info;
+};
+#endif
 
 struct resources {
     struct ibv_device_attr device_attr;
@@ -88,7 +126,12 @@ struct resources {
     struct ibv_mr *mr;
     char *buf;
     int sock;
-    int dma_fd; // Added for DMA-BUF
+    int dma_fd; // DMA-BUF file descriptor
+    enum buffer_type buf_type;
+    size_t buf_size;
+#ifdef HAVE_HLTHUNK
+    struct gaudi_context gaudi;
+#endif
 };
 
 extern struct config_t config;
@@ -105,5 +148,13 @@ int connect_qp(struct resources *res);
 int post_send(struct resources *res, int opcode);
 int post_receive(struct resources *res);
 int poll_completion(struct resources *res);
+int sync_dmabuf(int dmabuf_fd, uint64_t flags);
+
+// Gaudi-specific functions
+#ifdef HAVE_HLTHUNK
+int init_gaudi_device(struct resources *res);
+int allocate_gaudi_dmabuf(struct resources *res, size_t size);
+void cleanup_gaudi_context(struct resources *res);
+#endif
 
 #endif
