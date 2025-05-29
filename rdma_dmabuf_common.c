@@ -141,8 +141,9 @@ int init_rdma_resources(rdma_context_t *ctx, const char *ib_dev_name) {
         goto cleanup;
     }
     
-    // Register memory
-    int mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
+    // Register memory - ensure all access flags are set
+    int mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | 
+                   IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC;
     
     if (ctx->dmabuf_fd >= 0) {
         // Try direct DMA-buf registration
@@ -263,7 +264,8 @@ static int modify_qp_to_init(struct ibv_qp *qp) {
         .qp_state = IBV_QPS_INIT,
         .port_num = 1,
         .pkey_index = 0,
-        .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE
+        .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | 
+                          IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC
     };
     return ibv_modify_qp(qp, &attr, IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS);
 }

@@ -148,7 +148,12 @@ int main(int argc, char *argv[]) {
         printf("✅ RDMA using regular memory\n");
         printf("   - Host buffer: %p\n", ctx.buffer);
     }
-    printf("   - Data transferred: %d iterations + 1 RDMA write\n", 3);
+    printf("\n📊 Operations Summary:\n");
+    printf("   ✓ Send/Receive: 3 iterations completed\n");
+    printf("   ✓ RDMA Write: Successfully pushed data to client\n");
+    printf("\n💡 Note: RDMA Read operations are typically not supported\n");
+    printf("   with device memory due to DMA initiator requirements.\n");
+    printf("   Use RDMA Write to push data or Send/Receive for bidirectional.\n");
     
     cleanup_resources(&ctx);
     printf("\nServer shutdown complete\n");
