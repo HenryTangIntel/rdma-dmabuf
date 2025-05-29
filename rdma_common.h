@@ -23,6 +23,8 @@
 #include <sys/ioctl.h>
 #include <stdbool.h>
 
+#define HAVE_HLTHUNK
+
 // Include hlthunk for Intel Gaudi support
 #ifdef HAVE_HLTHUNK
 #include "hlthunk.h"

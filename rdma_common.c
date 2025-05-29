@@ -180,7 +180,7 @@ int allocate_gaudi_dmabuf(struct resources *res, size_t size) {
     // Try to export the mapped memory as DMA-buf
     INFO("Exporting device memory as DMA-buf...\n");
     res->dma_fd = hlthunk_device_mapped_memory_export_dmabuf_fd(
-        res->gaudi.gaudi_fd, res->gaudi.device_va, size, 0, 0);
+        res->gaudi.gaudi_fd, res->gaudi.device_va, size, 0, (O_RDWR | O_CLOEXEC));
     if (res->dma_fd < 0) {
         INFO("DMA-buf export failed (%s), this is expected on some configurations\n", strerror(errno));
         INFO("Creating regular host buffer for InfiniBand compatibility...\n");
@@ -366,6 +366,7 @@ int resources_create(struct resources *res) {
     }
 
     // Fallback to posix_memalign if all else fails
+    #if 0
     if (!res->mr) {
         fprintf(stderr, "Falling back to posix_memalign allocation\n");
         if (res->buf) {
@@ -392,6 +393,7 @@ int resources_create(struct resources *res) {
             ERR_DIE("ibv_reg_mr (posix_memalign) failed: %s (errno=%d)\n", strerror(errno), errno);
         INFO("posix_memalign memory region registered: lkey=%u, rkey=%u\n", res->mr->lkey, res->mr->rkey);
     }
+    #endif
 
     // Initialize buffer with message for server
     if (!config.server_name)
