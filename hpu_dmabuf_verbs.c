@@ -149,7 +149,7 @@ int allocate_gaudi_dmabuf(dmabuf_context_t *ctx, size_t size) {
     // Try to export the mapped memory as DMA-buf
     printf("Exporting device memory as DMA-buf...\n");
     ctx->dmabuf_fd = hlthunk_device_mapped_memory_export_dmabuf_fd(
-        ctx->gaudi_fd, ctx->device_va, size, 0, 0);
+        ctx->gaudi_fd, ctx->device_va, size, 0, (O_RDWR | O_CLOEXEC));
     if (ctx->dmabuf_fd < 0) {
         printf("DMA-buf export failed (%s), this is expected on some configurations\n", strerror(errno));
         printf("Creating regular host buffer for InfiniBand compatibility...\n");
@@ -238,33 +238,14 @@ int register_buffer_with_ib(dmabuf_context_t *ctx) {
     void *reg_addr = NULL;
     
     if (ctx->dmabuf_fd >= 0) {
-        printf("Attempting to register DMA-buf with InfiniBand...\n");
-        
-        // Method 1: Try to mmap the DMA-buf in a way that's compatible with IB
-        ctx->buffer = mmap(NULL, ctx->buffer_size, 
-                          PROT_READ | PROT_WRITE, MAP_SHARED, 
-                          ctx->dmabuf_fd, 0);
-        
-        if (ctx->buffer == MAP_FAILED) {
-            printf("Standard mmap failed, trying with MAP_POPULATE...\n");
-            
-            // Method 2: Force population of page tables
-            ctx->buffer = mmap(NULL, ctx->buffer_size, 
-                              PROT_READ | PROT_WRITE, 
-                              MAP_SHARED | MAP_POPULATE, 
-                              ctx->dmabuf_fd, 0);
-            
-            if (ctx->buffer == MAP_FAILED) {
-                fprintf(stderr, "All DMA-buf mapping methods failed\n");
-                return -1;
-            } else {
-                reg_addr = ctx->buffer;
-                printf("Successfully mapped DMA-buf with MAP_POPULATE at %p\n", ctx->buffer);
-            }
-        } else {
-            reg_addr = ctx->buffer;
-            printf("Successfully mapped DMA-buf at %p\n", ctx->buffer);
+        ctx->mr = ibv_reg_dmabuf_mr(ctx->pd, 0, ctx->buffer_size, 
+                                 0, ctx->dmabuf_fd, 
+                                 IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+        if (ctx->mr) {
+             printf("Success: Direct DMA-buf registration!\n");
+             return 0;
         }
+        
     } else if (ctx->buffer) {
         // Host buffer case - should work with InfiniBand
         reg_addr = ctx->buffer;
