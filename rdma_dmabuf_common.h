@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 #include <netdb.h>
 #include <infiniband/verbs.h>
 #include "hlthunk.h"
@@ -51,6 +52,7 @@ typedef struct {
     // Buffer info
     size_t buffer_size;
     void *buffer;  // For CPU access if available
+    uint64_t host_device_va;  // Host buffer mapped to Gaudi
 } rdma_context_t;
 
 // Function declarations
@@ -61,6 +63,7 @@ int post_send(rdma_context_t *ctx, int opcode);
 int post_receive(rdma_context_t *ctx);
 int poll_completion(rdma_context_t *ctx);
 void cleanup_resources(rdma_context_t *ctx);
+void simulate_hpu_operation(rdma_context_t *ctx, const char *operation);
 
 // Helper functions
 static inline uint64_t htonll(uint64_t val) {

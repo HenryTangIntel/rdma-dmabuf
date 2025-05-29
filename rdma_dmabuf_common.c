@@ -72,13 +72,25 @@ int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
         }
         memset(ctx->buffer, 0, size);
         
-        // Try to map host buffer to Gaudi
-        uint64_t host_va = hlthunk_host_memory_map(ctx->gaudi_fd, ctx->buffer, 0, size);
-        if (host_va) {
-            printf("Host buffer mapped to Gaudi at 0x%lx\n", host_va);
+        // Map host buffer to Gaudi's address space for CPU-HPU data transfer
+        ctx->host_device_va = hlthunk_host_memory_map(ctx->gaudi_fd, ctx->buffer, 0, size);
+        if (ctx->host_device_va) {
+            printf("Host buffer mapped to Gaudi at 0x%lx\n", ctx->host_device_va);
+            printf("CPU can now read/write data that HPU can access\n");
+        } else {
+            printf("Host memory mapping to Gaudi failed, but buffer still usable\n");
         }
     } else {
         printf("DMA-buf created successfully (fd=%d)\n", ctx->dmabuf_fd);
+        // For DMA-buf case, we might still want CPU access for debugging
+        // Try to mmap the DMA-buf
+        ctx->buffer = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->dmabuf_fd, 0);
+        if (ctx->buffer == MAP_FAILED) {
+            ctx->buffer = NULL;
+            printf("DMA-buf mmap failed - CPU access not available (this is normal)\n");
+        } else {
+            printf("DMA-buf mapped to CPU address %p\n", ctx->buffer);
+        }
     }
     
     return 0;
@@ -459,6 +471,17 @@ void cleanup_resources(rdma_context_t *ctx) {
     
     if (ctx->dmabuf_fd >= 0) {
         close(ctx->dmabuf_fd);
+    }
+    
+    if (ctx->buffer && ctx->dmabuf_fd < 0) {
+        // Unmap from Gaudi if it was mapped
+        if (ctx->host_device_va && ctx->gaudi_fd >= 0) {
+            hlthunk_memory_unmap(ctx->gaudi_fd, ctx->host_device_va);
+        }
+        free(ctx->buffer);
+    } else if (ctx->buffer) {
+        // Unmap DMA-buf mmap
+        munmap(ctx->buffer, ctx->buffer_size);
     }
     
     if (ctx->gaudi_handle) {

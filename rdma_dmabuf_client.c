@@ -73,6 +73,24 @@ int main(int argc, char *argv[]) {
     }
     printf("✓ Connected to server\n");
     
+    // Function to display buffer data (first few integers)
+    void display_buffer_data(const char *label, void *buffer, size_t size) {
+        if (!buffer) {
+            printf("%s: Data in device memory (no CPU access)\n", label);
+            return;
+        }
+        
+        int *int_data = (int *)buffer;
+        int count = size / sizeof(int);
+        int display_count = count > 10 ? 10 : count;
+        
+        printf("%s (first %d of %d ints): ", label, display_count, count);
+        for (int i = 0; i < display_count; i++) {
+            printf("%d ", int_data[i]);
+        }
+        printf("...\n");
+    }
+    
     // Main communication loop
     printf("\nStarting communication...\n");
     
@@ -81,8 +99,20 @@ int main(int argc, char *argv[]) {
         
         // Prepare message
         if (ctx.buffer) {
-            snprintf(ctx.buffer, MSG_SIZE, "Hello from client - iteration %d, %s mode", 
-                     i + 1, ctx.dmabuf_fd >= 0 ? "zero-copy" : "normal");
+            printf("[CPU→HPU] Writing data pattern for iteration %d...\n", i + 1);
+            int *int_data = (int *)ctx.buffer;
+            int count = MSG_SIZE / sizeof(int);
+            
+            // Write iteration-specific pattern
+            for (int j = 0; j < count && j < 256; j++) {
+                int_data[j] = (i + 1) * 100 + j;  // Pattern: 100+j, 200+j, 300+j...
+            }
+            
+            display_buffer_data("[CPU] Sending to server", ctx.buffer, MSG_SIZE);
+            
+            if (ctx.host_device_va) {
+                printf("[HPU] Data accessible at device VA 0x%lx\n", ctx.host_device_va);
+            }
         } else {
             printf("Note: Buffer is in device memory - would be written by Gaudi kernel\n");
         }
@@ -114,7 +144,17 @@ int main(int argc, char *argv[]) {
         }
         
         if (ctx.buffer) {
-            printf("Received: %s\n", (char *)ctx.buffer);
+            printf("[HPU→CPU] Reading server response:\n");
+            display_buffer_data("Received from server", ctx.buffer, MSG_SIZE);
+            
+            // Verify if server processed our data (should be doubled)
+            int *int_data = (int *)ctx.buffer;
+            int expected = ((i + 1) * 100) * 2;  // First element should be doubled
+            if (int_data[0] == expected) {
+                printf("✓ Data verification passed! Server correctly processed our data.\n");
+            } else {
+                printf("⚠️  Expected first element: %d, got: %d\n", expected, int_data[0]);
+            }
         } else {
             printf("Received data in device memory\n");
         }
@@ -126,7 +166,14 @@ int main(int argc, char *argv[]) {
     sleep(1); // Give server time to perform RDMA write
     
     if (ctx.buffer) {
-        printf("Buffer after RDMA write: %s\n", (char *)ctx.buffer);
+        printf("[HPU→CPU] Reading RDMA Write data:\n");
+        display_buffer_data("After RDMA Write", ctx.buffer, MSG_SIZE);
+        
+        // Verify RDMA Write data
+        int *int_data = (int *)ctx.buffer;
+        if (int_data[0] == 9000) {
+            printf("✓ RDMA Write verification passed! Got expected pattern from server.\n");
+        }
     } else {
         printf("RDMA write completed to device memory\n");
     }

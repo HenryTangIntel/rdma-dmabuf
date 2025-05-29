@@ -64,10 +64,40 @@ int main(int argc, char *argv[]) {
     }
     printf("✓ Client connected\n");
     
-    // Initialize buffer with message if CPU accessible
+    // Function to display buffer data (first few integers)
+    void display_buffer_data(const char *label, void *buffer, size_t size) {
+        if (!buffer) {
+            printf("%s: Data in device memory (no CPU access)\n", label);
+            return;
+        }
+        
+        int *int_data = (int *)buffer;
+        int count = size / sizeof(int);
+        int display_count = count > 10 ? 10 : count;
+        
+        printf("%s (first %d of %d ints): ", label, display_count, count);
+        for (int i = 0; i < display_count; i++) {
+            printf("%d ", int_data[i]);
+        }
+        printf("...\n");
+    }
+    
+    // Initialize buffer with test pattern if CPU accessible
     if (ctx.buffer) {
-        snprintf(ctx.buffer, MSG_SIZE, "Hello from server using %s!", 
-                 ctx.dmabuf_fd >= 0 ? "Gaudi DMA-buf" : "regular memory");
+        printf("\n[CPU→HPU] Writing initial data pattern to buffer...\n");
+        int *int_data = (int *)ctx.buffer;
+        int count = MSG_SIZE / sizeof(int);
+        
+        // Write a recognizable pattern
+        for (int i = 0; i < count; i++) {
+            int_data[i] = 1000 + i;  // Pattern: 1000, 1001, 1002...
+        }
+        
+        display_buffer_data("[CPU] Initial server data", ctx.buffer, MSG_SIZE);
+        
+        if (ctx.host_device_va) {
+            printf("[HPU] Data accessible at device VA 0x%lx\n", ctx.host_device_va);
+        }
     } else {
         printf("Note: Buffer is in device memory - would be initialized by Gaudi kernel\n");
     }
@@ -92,11 +122,18 @@ int main(int argc, char *argv[]) {
         }
         
         if (ctx.buffer) {
-            printf("Received: %s\n", (char *)ctx.buffer);
+            printf("[HPU→CPU] Reading received data:\n");
+            display_buffer_data("Received from client", ctx.buffer, MSG_SIZE);
             
-            // Update message
-            snprintf(ctx.buffer, MSG_SIZE, "Server iteration %d - Zero-copy %s", 
-                     i + 1, ctx.dmabuf_fd >= 0 ? "enabled" : "disabled");
+            // Simulate HPU processing: multiply each value by 2
+            printf("[HPU] Processing data (multiplying by 2)...\n");
+            int *int_data = (int *)ctx.buffer;
+            int count = MSG_SIZE / sizeof(int);
+            for (int j = 0; j < count && j < 256; j++) {  // Process first 256 ints
+                int_data[j] *= 2;
+            }
+            
+            display_buffer_data("[CPU] After HPU processing", ctx.buffer, MSG_SIZE);
         } else {
             printf("Received data in device memory\n");
         }
@@ -118,7 +155,13 @@ int main(int argc, char *argv[]) {
     // RDMA Write test
     printf("\n--- RDMA Write Test ---\n");
     if (ctx.buffer) {
-        snprintf(ctx.buffer, MSG_SIZE, "RDMA Write from server - Zero-copy active!");
+        printf("[CPU→HPU] Preparing RDMA Write data...\n");
+        int *int_data = (int *)ctx.buffer;
+        // Write a special pattern for RDMA Write
+        for (int i = 0; i < 10; i++) {
+            int_data[i] = 9000 + i;  // Pattern: 9000, 9001, 9002...
+        }
+        display_buffer_data("[CPU] RDMA Write data", ctx.buffer, MSG_SIZE);
     }
     
     printf("Performing RDMA Write to client...\n");
