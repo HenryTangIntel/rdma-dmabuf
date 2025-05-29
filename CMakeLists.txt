@@ -60,8 +60,13 @@ target_link_libraries(claudclean PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIE
 
 add_executable(rdma_dmabuf_server rdma_dmabuf_server.c rdma_dmabuf_common.c)
 target_link_libraries(rdma_dmabuf_server PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
 add_executable(rdma_dmabuf_client rdma_dmabuf_client.c rdma_dmabuf_common.c)
 target_link_libraries(rdma_dmabuf_client PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
+add_executable(hpu_data_rw hpu_data_rw.c)
+target_link_libraries(hpu_data_rw PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
 
 
 
