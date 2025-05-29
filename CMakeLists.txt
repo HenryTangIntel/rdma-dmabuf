@@ -48,6 +48,15 @@ add_executable(hpu hpu.c)
 target_link_libraries(hpu PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
 
 
+add_executable(hpu_dma_buf hpu_dma_buf.c)
+target_link_libraries(hpu_dma_buf PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
+add_executable(hpu_dmabuf_verbs hpu_dmabuf_verbs.c)
+target_link_libraries(hpu_dmabuf_verbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
+
+
+
+
 
 add_custom_command(TARGET client server 
     POST_BUILD
