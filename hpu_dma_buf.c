@@ -11,7 +11,7 @@
 
 int main(void)
 {
-    const char *busid = "0000:4d:00.0";
+    const char *busid = "0000:9b:00.0";
 
     // Step 1: Open Gaudi device
     int fd = hlthunk_open(HLTHUNK_DEVICE_DONT_CARE, busid);
@@ -43,6 +43,19 @@ int main(void)
         hlthunk_close(fd);
         return -1;
     }
+
+    printf("[HLTHUNK] Device memory mapped at address: 0x%llx\n", (unsigned long long)mapped_addr);
+
+    int ret = hlthunk_memory_unmap(fd, mapped_addr);
+    if (ret < 0) {
+        fprintf(stderr, "Failed to unmap device memory: %s\n", strerror(errno));
+        hlthunk_device_memory_free(fd, device_handle);
+        hlthunk_close(fd);
+        return -1;
+    }
+
+
+    /*
 
     // Step 3: Export to DMA-BUF with correct 4-arg version
     uint32_t export_flags = 0;
@@ -98,9 +111,8 @@ int main(void)
     ibv_dealloc_pd(pd);
     ibv_close_device(ctx);
     ibv_free_device_list(dev_list);
-
+    */
 cleanup:
-    close(dma_buf_fd);
     hlthunk_device_memory_free(fd, device_handle);
     hlthunk_close(fd);
     return 0;
