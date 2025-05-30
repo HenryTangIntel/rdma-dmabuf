@@ -93,7 +93,7 @@ TCP Socket Exchange (Client ←→ Server):
 
 #### Client Side Operations:
 ```
-Iteration 1:
+
 1. Data resides in Gaudi memory @ 0x1001001800000000                   
 2. post_send() → NIC initiates DMA read from Gaudi
 3. NIC → Network → Remote NIC
