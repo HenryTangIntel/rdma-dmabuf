@@ -182,7 +182,7 @@ void RdmaVerbs::postSend(int opcode) {
         .wr_id = 0,
         .sg_list = &sge,
         .num_sge = 1,
-        .opcode = opcode,
+        .opcode = static_cast<ibv_wr_opcode>(opcode),
         .send_flags = IBV_SEND_SIGNALED,
     };
 
@@ -314,18 +314,16 @@ bool RdmaVerbs::setupResources(HpuManager& hpu) {
         return false;
     }
 
-    struct ibv_qp_init_attr qp_init_attr = {
-        .qp_type = IBV_QPT_RC,
-        .sq_sig_all = 1,
-        .send_cq = cq_,
-        .recv_cq = cq_,
-        .cap = {
-            .max_send_wr = 10,
-            .max_recv_wr = 10,
-            .max_send_sge = 1,
-            .max_recv_sge = 1
-        }
-    };
+    struct ibv_qp_init_attr qp_init_attr = {};
+    qp_init_attr.send_cq = cq_;
+    qp_init_attr.recv_cq = cq_;
+    qp_init_attr.cap.max_send_wr = 1;
+    qp_init_attr.cap.max_recv_wr = 1;
+    qp_init_attr.cap.max_send_sge = 1;
+    qp_init_attr.cap.max_recv_sge = 1;
+    qp_init_attr.qp_type = IBV_QPT_RC;
+    qp_init_attr.sq_sig_all = 1;
+
 
     qp_ = ibv_create_qp(pd_, &qp_init_attr);
     if (!qp_) {
@@ -410,32 +408,36 @@ bool RdmaVerbs::exchangeConnectionData() {
 }
 
 bool RdmaVerbs::modifyQpToInit() {
-    struct ibv_qp_attr attr = {
-        .qp_state = IBV_QPS_INIT,
-        .port_num = 1,
-        .pkey_index = 0,
-        .qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | 
-                          IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC
-    };
-    return ibv_modify_qp(qp_, &attr, IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS) == 0;
+    struct ibv_qp_attr attr = {};
+    attr.qp_state = IBV_QPS_INIT;
+    attr.port_num = 1;
+    attr.pkey_index = 0;
+    attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE |
+                           IBV_ACCESS_REMOTE_READ |
+                           IBV_ACCESS_REMOTE_WRITE |
+                           IBV_ACCESS_REMOTE_ATOMIC;
+
+    int flags = IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
+    return ibv_modify_qp(qp_, &attr, flags) == 0;
 }
 
+
 bool RdmaVerbs::modifyQpToRtr() {
-    struct ibv_qp_attr attr = {
-        .qp_state = IBV_QPS_RTR,
-        .path_mtu = IBV_MTU_4096,
-        .dest_qp_num = remote_props_.qp_num,
-        .rq_psn = 0,
-        .max_dest_rd_atomic = 1,
-        .min_rnr_timer = 12,
-        .ah_attr = {
-            .is_global = 0,
-            .dlid = remote_props_.lid,
-            .sl = 0,
-            .src_path_bits = 0,
-            .port_num = 1
-        }
-    };
+        
+    struct ibv_qp_attr attr = {};
+    attr.qp_state = IBV_QPS_RTR;
+    attr.path_mtu = IBV_MTU_4096;
+    attr.dest_qp_num = remote_props_.qp_num;
+    attr.rq_psn = 0;
+    attr.max_dest_rd_atomic = 1;
+    attr.min_rnr_timer = 12;
+
+    attr.ah_attr.is_global = 0;
+    attr.ah_attr.dlid = remote_props_.lid;
+    attr.ah_attr.sl = 0;
+    attr.ah_attr.src_path_bits = 0;
+    attr.ah_attr.port_num = 1;
+
 
     if (memcmp(remote_props_.gid, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16)) {
         attr.ah_attr.is_global = 1;
@@ -450,14 +452,14 @@ bool RdmaVerbs::modifyQpToRtr() {
 }
 
 bool RdmaVerbs::modifyQpToRts() {
-    struct ibv_qp_attr attr = {
-        .qp_state = IBV_QPS_RTS,
-        .timeout = 14,
-        .retry_cnt = 7,
-        .rnr_retry = 7,
-        .sq_psn = 0,
-        .max_rd_atomic = 1
-    };
+    struct ibv_qp_attr attr = {};
+    attr.qp_state = IBV_QPS_RTS;
+    attr.timeout = 14;
+    attr.retry_cnt = 7;
+    attr.rnr_retry = 7;
+    attr.sq_psn = 0;
+    attr.max_rd_atomic = 1;
+
     return ibv_modify_qp(qp_, &attr, IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
                          IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC) == 0;
 }

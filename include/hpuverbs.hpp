@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <sys/mman.h>
 #include <netdb.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <infiniband/verbs.h>
