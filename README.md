@@ -96,7 +96,7 @@ TCP Socket Exchange (Client ←→ Server):
 #### Client Side Operations:
 ```
 Iteration 1:
-1. Data resides in Gaudi memory @ 0x201002000000000
+1. Data resides in Gaudi memory @ 0x1001001800000000                   
 2. post_send() → NIC initiates DMA read from Gaudi
 3. NIC → Network → Remote NIC
 4. poll_completion() → Wait for send completion
@@ -121,7 +121,7 @@ Server → Client:
 2. Server: post_send(IBV_WR_RDMA_WRITE)
 3. Server NIC: DMA read from local Gaudi
 4. Network transfer
-5. Client NIC: DMA write to client Gaudi @ 0x201002000000000
+5. Client NIC: DMA write to client Gaudi @ 0x1001001800000000                   
 6. No client CPU/software involvement (true one-sided)
 ```
 
@@ -133,7 +133,7 @@ The complete hardware data path:
 Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi3 HBM
      ↑                                                    ↑
      |                                                    |
-0x1001001800000000                              0x201002000000000
+0x1001001800000000                              0x1001001800000000                   
 ```
 
 ## Key Implementation Details
