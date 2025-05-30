@@ -1,4 +1,4 @@
-# rdma-dmabuf
+# rdma-gdr(dmabuf)
 
 A client-server implementation for DMA buffer operations using RDMA verbs on Habana Gaudi hardware.
 
