@@ -40,7 +40,7 @@ The system demonstrates zero-copy RDMA between Gaudi accelerators using DMA-buf.
 Both client and server perform the following initialization steps:
 
 ```
-1. Open Gaudi device (Gaudi2/Gaudi3)
+1. Open Gaudi device (Gaudi2/Gaudi2)
 2. Allocate device memory on Gaudi HBM
 3. Export memory as DMA-buf file descriptor
 4. Register DMA-buf with InfiniBand NIC
@@ -130,7 +130,7 @@ Server → Client:
 The complete hardware data path:
 
 ```
-Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi3 HBM
+Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi2 HBM
      ↑                                                    ↑
      |                                                    |
 0x1001001800000000                              0x1001001800000000                   
