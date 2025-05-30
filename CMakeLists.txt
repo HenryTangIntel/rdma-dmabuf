@@ -63,7 +63,31 @@ target_link_libraries(client
     ${HLTHUNK_LIBRARIES}
 )
 
+# Custom commands to copy executables
+add_custom_command(
+    TARGET server
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:server>
+            ${CMAKE_BINARY_DIR}/dmabuf_server
+    COMMENT "Copying server to dmabuf_server"
+)
+
+add_custom_command(
+    TARGET client
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:client>
+            ${CMAKE_BINARY_DIR}/dmabuf_client
+    COMMENT "Copying client to dmabuf_client"
+)
+
 # Installation
 install(TARGETS server client
+    DESTINATION bin
+)
+install(FILES
+    ${CMAKE_BINARY_DIR}/dmabuf_server
+    ${CMAKE_BINARY_DIR}/dmabuf_client
     DESTINATION bin
 )
