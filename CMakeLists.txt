@@ -1,15 +1,21 @@
 cmake_minimum_required(VERSION 3.10)
-project(rdma-tutorial C)
+project(RDMADmabuf LANGUAGES CXX)
 
-set(CMAKE_C_STANDARD 99)
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Ensure POSIX functions are available
+add_definitions(-D_POSIX_C_SOURCE=200809L)
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(IBVERBS REQUIRED libibverbs)
 
+# Include directories
 include_directories(
     ${IBVERBS_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     /workspace/hl-thunk/include
     /workspace/hl-thunk/include/uapi
     /workspace/hl-thunk/src
@@ -18,65 +24,48 @@ include_directories(
     /workspace/hl-thunk/include/specs/common
     /usr/include
     /usr/include/drm
-    )
+)
 
+# Link directories
 link_directories(
     ${IBVERBS_LIBRARY_DIRS}
     /workspace/hl-thunk/build/lib
     /usr/lib/x86_64-linux-gnu
 )
 
+# Glob hlthunk libraries
 file(GLOB HLTHUNK_LIBRARIES "/workspace/hl-thunk/build/lib/*.so" "/workspace/hl-thunk/build/lib/*.a")
-file(GLOB HLTHUNK_TEST_LIBRARIES "/workspace/hl-thunk/tests/build/*.so" "/workspace/hl-thunk/test/build/*.a") 
 
-add_executable(client client.c rdma_common.c)
-target_link_libraries(client ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
+# Source files
+set(SOURCES
+    src/hpuverbs.cpp
+)
 
-add_executable(server server.c rdma_common.c)
-target_link_libraries(server ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES})
+# Server executable
+add_executable(rdma_dmabuf_server
+    src/server.cpp
+    ${SOURCES}
+)
 
+target_link_libraries(rdma_dmabuf_server
+    PRIVATE
+    ${IBVERBS_LIBRARIES}
+    ${HLTHUNK_LIBRARIES}
+)
 
+# Client executable
+add_executable(rdma_dmabuf_client
+    src/client.cpp
+    ${SOURCES}
+)
 
-#add_executable(hpu hpu.c)
-#target_link_libraries(hpu PRIVATE hl-thunk-tests ${CMOCKA_LIBRARY})
+target_link_libraries(rdma_dmabuf_client
+    PRIVATE
+    ${IBVERBS_LIBRARIES}
+    ${HLTHUNK_LIBRARIES}
+)
 
-add_executable(hpu hpu.c)
-target_link_libraries(hpu PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-
-add_executable(hpu_dma_buf hpu_dma_buf.c)
-target_link_libraries(hpu_dma_buf PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-add_executable(hpu_dmabuf_verbs hpu_dmabuf_verbs.c)
-target_link_libraries(hpu_dmabuf_verbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-add_executable(clean_dmabufverbs clean_dmabufverbs.c)
-target_link_libraries(clean_dmabufverbs PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-
-add_executable(claudclean claudclean.c)
-target_link_libraries(claudclean PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-
-add_executable(rdma_dmabuf_server rdma_dmabuf_server.c rdma_dmabuf_common.c)
-target_link_libraries(rdma_dmabuf_server PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-add_executable(rdma_dmabuf_client rdma_dmabuf_client.c rdma_dmabuf_common.c)
-target_link_libraries(rdma_dmabuf_client PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-add_executable(hpu_data_rw hpu_data_rw.c)
-target_link_libraries(hpu_data_rw PRIVATE ${IBVERBS_LIBRARIES} ${HLTHUNK_LIBRARIES} ${HLTHUNK_TEST_LIBRARIES})
-
-
-
-
-
-
-add_custom_command(TARGET client server 
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/client
-        ${CMAKE_CURRENT_BINARY_DIR}/server
-        ${CMAKE_CURRENT_BINARY_DIR}/..
-    COMMENT "Copying client, server to parent directory"
+# Installation
+install(TARGETS rdma_dmabuf_server rdma_dmabuf_client
+    DESTINATION bin
 )
