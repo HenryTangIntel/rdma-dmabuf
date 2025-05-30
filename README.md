@@ -151,17 +151,6 @@ Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi2 HBM
    - Production systems process data in-place on device
 
 
-## Working Flow
-- DMA-buf is created in Gaudi device memory
-- CPU cannot mmap this device memory (this is expected)
-- All data stays in device memory - never touches CPU/system RAM
-- No data verification because CPU can't read the buffers
-
-This is actually the optimal performance path for production! The data flows directly:  
-```
-Gaudi Memory → PCIe → NIC → Network → NIC → PCIe → Gaudi Memory
-```
-
 ## Prerequisites
 
 - Habana Gaudi hardware
