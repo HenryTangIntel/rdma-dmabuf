@@ -15,17 +15,9 @@ This implementation has successfully achieved:
 ✅ One-sided RDMA Write operations  
 ⚠️  RDMA Read needs further investigation
 
-This is excellent progress! The core zero-copy functionality is working. For the RDMA Read issue, you might want to:
-
-- Check if your RDMA driver version fully supports DMA-buf for all operations
-- Verify with ibv_devinfo -v that your device supports RDMA Read
-- Test RDMA Read with regular memory to isolate if it's DMA-buf specific
-
-The fact that everything else works confirms that you have true zero-copy RDMA with Gaudi!
-
 ## RDMA DMA-buf Data Flow Overview
 
-This document explains the data flow for the RDMA DMA-buf implementation that enables zero-copy data transfer between Intel Gaudi accelerators over InfiniBand networks.
+This document explains the data flow for the RDMA DMA-buf implementation that enables zero-copy data transfer between Intel Gaudi accelerators over RoCE/InfiniBand networks.
 
 ## System Architecture
 
