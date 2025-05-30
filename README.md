@@ -23,9 +23,7 @@ This is excellent progress! The core zero-copy functionality is working. For the
 
 The fact that everything else works confirms that you have true zero-copy RDMA with Gaudi!
 
-# RDMA DMA-buf Data Flow Documentation
-
-## Overview
+## RDMA DMA-buf Data Flow Overview
 
 This document explains the data flow for the RDMA DMA-buf implementation that enables zero-copy data transfer between Intel Gaudi accelerators over InfiniBand networks.
 
