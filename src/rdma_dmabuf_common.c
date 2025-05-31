@@ -4,6 +4,7 @@
 // Initialize Gaudi device and allocate DMA-buf
 int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
     ctx->buffer_size = size;
+    ctx->host_device_va = 0;  // Initialize to 0
     
     // Try to open Gaudi device
     enum hlthunk_device_name devices[] = {
@@ -24,6 +25,7 @@ int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
         if (!ctx->buffer) return -1;
         memset(ctx->buffer, 0, size);
         ctx->dmabuf_fd = -1;
+        ctx->host_device_va = 0;  // No Gaudi mapping possible
         return 0;
     }
     
@@ -36,17 +38,20 @@ int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
     
     printf("Gaudi device opened successfully\n");
     
+    // Check if we should force host memory mode (for testing)
+    if (getenv("FORCE_HOST_MEMORY")) {
+        printf("FORCE_HOST_MEMORY set - using host-mapped memory for CPU visibility\n");
+        ctx->gaudi_handle = 0;
+        ctx->device_va = 0;
+        ctx->dmabuf_fd = -1;
+        goto use_host_memory;
+    }
+    
     // Allocate device memory
     ctx->gaudi_handle = hlthunk_device_memory_alloc(ctx->gaudi_fd, size, 0, true, true);
     if (ctx->gaudi_handle == 0) {
         printf("Failed to allocate Gaudi memory, using regular memory\n");
-        hlthunk_close(ctx->gaudi_fd);
-        ctx->gaudi_fd = -1;
-        ctx->buffer = aligned_alloc(4096, size);
-        if (!ctx->buffer) return -1;
-        memset(ctx->buffer, 0, size);
-        ctx->dmabuf_fd = -1;
-        return 0;
+        goto use_host_memory;
     }
     
     // Map device memory
@@ -63,6 +68,17 @@ int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
     
     if (ctx->dmabuf_fd < 0) {
         printf("DMA-buf export failed, creating host-mapped buffer\n");
+use_host_memory:
+        // Clean up any device allocations if we're falling back
+        if (ctx->gaudi_handle) {
+            if (ctx->device_va) {
+                hlthunk_memory_unmap(ctx->gaudi_fd, ctx->device_va);
+                ctx->device_va = 0;
+            }
+            hlthunk_device_memory_free(ctx->gaudi_fd, ctx->gaudi_handle);
+            ctx->gaudi_handle = 0;
+        }
+        
         // Fallback: allocate host memory and map it to Gaudi
         ctx->buffer = aligned_alloc(4096, size);
         if (!ctx->buffer) {
@@ -500,4 +516,174 @@ void cleanup_resources(rdma_context_t *ctx) {
     if (ctx->sock >= 0) {
         close(ctx->sock);
     }
+}
+
+// Simulate HPU operations on the buffer
+void simulate_hpu_operation(rdma_context_t *ctx, const char *operation) {
+    if (!ctx->buffer) {
+        printf("[HPU] Operation '%s' would be performed by HPU kernel on device memory\n", operation);
+        return;
+    }
+    
+    printf("[HPU] Simulating HPU operation: %s\n", operation);
+    int *int_data = (int *)ctx->buffer;
+    int count = MSG_SIZE / sizeof(int);
+    
+    if (strcmp(operation, "square") == 0) {
+        // Square each value
+        for (int i = 0; i < count && i < 256; i++) {
+            int_data[i] = int_data[i] * int_data[i];
+        }
+    } else if (strcmp(operation, "increment") == 0) {
+        // Increment each value by 1000
+        for (int i = 0; i < count && i < 256; i++) {
+            int_data[i] += 1000;
+        }
+    } else if (strcmp(operation, "reverse") == 0) {
+        // Reverse the order of elements
+        for (int i = 0; i < count/2 && i < 128; i++) {
+            int temp = int_data[i];
+            int_data[i] = int_data[count - 1 - i];
+            int_data[count - 1 - i] = temp;
+        }
+    }
+    
+    printf("[HPU] Operation '%s' completed\n", operation);
+}
+
+// Write test pattern to buffer for verification
+int write_test_pattern(rdma_context_t *ctx, int pattern_base) {
+    if (!ctx->buffer) {
+        printf("[TEST] Cannot write pattern - no CPU-accessible buffer\n");
+        printf("      Data would be written by Gaudi kernel to device memory\n");
+        return -1;
+    }
+    
+    printf("[TEST] Writing test pattern (base=%d) to buffer...\n", pattern_base);
+    
+    int *data = (int *)ctx->buffer;
+    int count = MSG_SIZE / sizeof(int);
+    
+    // Write recognizable pattern
+    for (int i = 0; i < count && i < 256; i++) {
+        data[i] = pattern_base + i;
+    }
+    
+    // Display first few values
+    printf("[TEST] Written: ");
+    for (int i = 0; i < 10 && i < count; i++) {
+        printf("%d ", data[i]);
+    }
+    printf("...\n");
+    
+    if (ctx->host_device_va) {
+        printf("[TEST] Pattern written to host buffer, accessible by Gaudi at VA 0x%lx\n", 
+               ctx->host_device_va);
+    }
+    
+    return 0;
+}
+
+// Verify test pattern in buffer
+int verify_test_pattern(rdma_context_t *ctx, int expected_base) {
+    if (!ctx->buffer) {
+        printf("[TEST] Cannot verify pattern - no CPU-accessible buffer\n");
+        printf("      Verification would be done by Gaudi kernel\n");
+        return -1;
+    }
+    
+    printf("[TEST] Verifying test pattern (expected base=%d)...\n", expected_base);
+    
+    int *data = (int *)ctx->buffer;
+    int count = MSG_SIZE / sizeof(int);
+    int errors = 0;
+    
+    // Display first few values
+    printf("[TEST] Received: ");
+    for (int i = 0; i < 10 && i < count; i++) {
+        printf("%d ", data[i]);
+    }
+    printf("...\n");
+    
+    // Verify pattern
+    for (int i = 0; i < count && i < 256; i++) {
+        int expected = expected_base + i;
+        if (data[i] != expected) {
+            if (errors < 5) {  // Report first few errors
+                printf("[TEST] Error at index %d: expected %d, got %d\n", 
+                       i, expected, data[i]);
+            }
+            errors++;
+        }
+    }
+    
+    if (errors == 0) {
+        printf("[TEST] ✅ Pattern verification PASSED! All %d values correct.\n", 
+               (count < 256 ? count : 256));
+        return 0;
+    } else {
+        printf("[TEST] ❌ Pattern verification FAILED! %d errors found.\n", errors);
+        return -1;
+    }
+}
+
+// Debug function to read device memory for inspection
+int debug_read_device_memory(rdma_context_t *ctx, size_t offset, size_t count) {
+    if (!ctx->gaudi_fd || !ctx->device_va) {
+        printf("[DEBUG] No device memory to inspect\n");
+        return -1;
+    }
+    
+    if (ctx->buffer) {
+        // If we have CPU access, just read directly
+        printf("[DEBUG] Reading from CPU-accessible buffer at offset %zu:\n", offset);
+        int *int_data = (int *)((char *)ctx->buffer + offset);
+        printf("Data (first %zu ints): ", count);
+        for (size_t i = 0; i < count && i < 10; i++) {
+            printf("%d ", int_data[i]);
+        }
+        printf("\n");
+        return 0;
+    }
+    
+    // For device-only memory, we need to DMA it to host
+    printf("[DEBUG] Device memory inspection at VA 0x%lx + offset %zu\n", ctx->device_va, offset);
+    
+    // Allocate temporary host buffer
+    size_t copy_size = count * sizeof(int);
+    void *temp_buffer = aligned_alloc(4096, copy_size);
+    if (!temp_buffer) {
+        printf("[DEBUG] Failed to allocate temp buffer\n");
+        return -1;
+    }
+    
+    // Map to device
+    uint64_t temp_va = hlthunk_host_memory_map(ctx->gaudi_fd, temp_buffer, 0, copy_size);
+    if (!temp_va) {
+        printf("[DEBUG] Failed to map temp buffer to device\n");
+        free(temp_buffer);
+        return -1;
+    }
+    
+    printf("[DEBUG] Temporary buffer mapped at device VA 0x%lx\n", temp_va);
+    printf("[DEBUG] To inspect device memory, you would need to:\n");
+    printf("  1. Submit DMA: src=0x%lx → dst=0x%lx, size=%zu\n", 
+           ctx->device_va + offset, temp_va, copy_size);
+    printf("  2. Execute DMA engine copy\n");
+    printf("  3. Read from temp buffer\n");
+    
+    // In production, you would submit a DMA command here
+    // For now, show the concept
+    
+    printf("\n[DEBUG] Device memory layout:\n");
+    printf("  - DMA-buf fd: %d\n", ctx->dmabuf_fd);
+    printf("  - Device VA: 0x%lx\n", ctx->device_va);
+    printf("  - Size: %zu bytes\n", ctx->buffer_size);
+    printf("  - Data is in Gaudi DRAM, inaccessible to CPU directly\n");
+    
+    // Cleanup
+    hlthunk_memory_unmap(ctx->gaudi_fd, temp_va);
+    free(temp_buffer);
+    
+    return 0;
 }
