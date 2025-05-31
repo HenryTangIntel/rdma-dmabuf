@@ -172,13 +172,13 @@ make
 ### Running the Server
 
 ```bash
-./build/server [options]
+./build/rdma_server [options]
 ```
 
 ### Running the Client
 
 ```bash
-./build/client [server-address] [options]
+./build/rdma_client [server-address] [options]
 ```
 
 ## Project Structure
