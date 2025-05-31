@@ -1,5 +1,4 @@
-// rdma_dmabuf_client.c
-#include "rdma_dmabuf_common.h"
+#include "rdma_common.h"
 
 int main(int argc, char *argv[]) {
     rdma_context_t ctx = {0};

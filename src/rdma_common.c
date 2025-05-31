@@ -1,5 +1,4 @@
-// rdma_dmabuf_common.c
-#include "rdma_dmabuf_common.h"
+#include "rdma_common.h"
 
 // Initialize Gaudi device and allocate DMA-buf
 int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {

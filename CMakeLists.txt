@@ -36,58 +36,29 @@ file(GLOB HLTHUNK_LIBRARIES "/opt/habanalabs/src/hl-thunk/build/lib/*.so" "/opt/
 
 # Source files
 set(SOURCES
-    src/rdma_dmabuf_common.c
+    src/rdma_common.c
 )
 
 # Server executable
-add_executable(server
-    src/rdma_dmabuf_server.c
+add_executable(rdma_server
+    src/rdma_server.c
     ${SOURCES}
 )
 
-target_link_libraries(server
+target_link_libraries(rdma_server
     PRIVATE
     ${IBVERBS_LIBRARIES}
     ${HLTHUNK_LIBRARIES}
 )
 
 # Client executable
-add_executable(client
-    src/rdma_dmabuf_client.c
+add_executable(rdma_client
+    src/rdma_client.c
     ${SOURCES}
 )
 
-target_link_libraries(client
+target_link_libraries(rdma_client
     PRIVATE
     ${IBVERBS_LIBRARIES}
     ${HLTHUNK_LIBRARIES}
-)
-
-# Custom commands to copy executables
-add_custom_command(
-    TARGET server
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:server>
-            ${CMAKE_BINARY_DIR}/dmabuf_server
-    COMMENT "Copying server to dmabuf_server"
-)
-
-add_custom_command(
-    TARGET client
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            $<TARGET_FILE:client>
-            ${CMAKE_BINARY_DIR}/dmabuf_client
-    COMMENT "Copying client to dmabuf_client"
-)
-
-# Installation
-install(TARGETS server client
-    DESTINATION bin
-)
-install(FILES
-    ${CMAKE_BINARY_DIR}/dmabuf_server
-    ${CMAKE_BINARY_DIR}/dmabuf_client
-    DESTINATION bin
 )
