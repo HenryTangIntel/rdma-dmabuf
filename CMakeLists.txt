@@ -63,6 +63,33 @@ target_link_libraries(client
     ${HLTHUNK_LIBRARIES}
 )
 
+# Client executable
+add_executable(hpu
+    src/hpu.c
+    ${SOURCES}
+)
+
+target_link_libraries(hpu
+    PRIVATE
+
+    ${IBVERBS_LIBRARIES}
+    ${HLTHUNK_LIBRARIES}
+)
+
+
+# Client executable
+add_executable(hpu-htod
+    src/hpu-htod.c
+    ${SOURCES}
+)
+
+target_link_libraries(hpu-htod
+    PRIVATE
+
+    ${IBVERBS_LIBRARIES}
+    ${HLTHUNK_LIBRARIES}
+)
+
 # Custom commands to copy executables
 add_custom_command(
     TARGET server
