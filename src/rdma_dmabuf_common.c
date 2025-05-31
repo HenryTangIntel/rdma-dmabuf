@@ -489,7 +489,7 @@ void cleanup_resources(rdma_context_t *ctx) {
         close(ctx->dmabuf_fd);
     }
     
-    if (ctx->buffer && ctx->dmabuf_fd < 0) {
+    /* if (ctx->buffer && ctx->dmabuf_fd < 0) {
         // Unmap from Gaudi if it was mapped
         if (ctx->host_device_va && ctx->gaudi_fd >= 0) {
             hlthunk_memory_unmap(ctx->gaudi_fd, ctx->host_device_va);
@@ -499,6 +499,21 @@ void cleanup_resources(rdma_context_t *ctx) {
         // Unmap DMA-buf mmap
         munmap(ctx->buffer, ctx->buffer_size);
     }
+    */
+    if(ctx->buffer) {
+        if (ctx->dmabuf_fd < 0) {
+            // Unmap from Gaudi if it was mapped
+            if (ctx->host_device_va && ctx->gaudi_fd >= 0) {
+                hlthunk_memory_unmap(ctx->gaudi_fd, ctx->host_device_va);
+            }
+            free(ctx->buffer);
+        } else {
+            // Unmap DMA-buf mmap
+            munmap(ctx->buffer, ctx->buffer_size);
+        }
+        ctx->buffer = NULL;
+    } 
+
     
     if (ctx->gaudi_handle) {
         if (ctx->device_va) {
