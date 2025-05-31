@@ -95,11 +95,29 @@ int init_gaudi_dmabuf(rdma_context_t *ctx, size_t size) {
     return 0;
 }
 
+// Helper function to clean up resources in case of failure
+static void cleanup_rdma_init_resources(rdma_context_t *ctx, struct ibv_device **dev_list) {
+    if (ctx->mr) ibv_dereg_mr(ctx->mr);
+    ctx->mr = NULL;
+    
+    if (ctx->cq) ibv_destroy_cq(ctx->cq);
+    ctx->cq = NULL;
+    
+    if (ctx->pd) ibv_dealloc_pd(ctx->pd);
+    ctx->pd = NULL;
+    
+    if (ctx->ib_ctx) ibv_close_device(ctx->ib_ctx);
+    ctx->ib_ctx = NULL;
+    
+    if (dev_list) ibv_free_device_list(dev_list);
+}
+
 // Initialize RDMA resources
 int init_rdma_resources(rdma_context_t *ctx, const char *ib_dev_name) {
-    struct ibv_device **dev_list;
+    struct ibv_device **dev_list = NULL;
     struct ibv_device *ib_dev = NULL;
     int num_devices, i;
+    int result = -1;
     
     // Get device list
     dev_list = ibv_get_device_list(&num_devices);
@@ -135,21 +153,24 @@ int init_rdma_resources(rdma_context_t *ctx, const char *ib_dev_name) {
     // Query port
     if (ibv_query_port(ctx->ib_ctx, 1, &ctx->port_attr)) {
         fprintf(stderr, "Failed to query port\n");
-        goto cleanup;
+        cleanup_rdma_init_resources(ctx, dev_list);
+        return -1;
     }
     
     // Allocate PD
     ctx->pd = ibv_alloc_pd(ctx->ib_ctx);
     if (!ctx->pd) {
         fprintf(stderr, "Failed to allocate PD\n");
-        goto cleanup;
+        cleanup_rdma_init_resources(ctx, dev_list);
+        return -1;
     }
     
     // Create CQ
     ctx->cq = ibv_create_cq(ctx->ib_ctx, 10, NULL, NULL, 0);
     if (!ctx->cq) {
         fprintf(stderr, "Failed to create CQ\n");
-        goto cleanup;
+        cleanup_rdma_init_resources(ctx, dev_list);
+        return -1;
     }
     
     // Register memory - ensure all access flags are set
@@ -172,14 +193,16 @@ int init_rdma_resources(rdma_context_t *ctx, const char *ib_dev_name) {
         ctx->mr = ibv_reg_mr(ctx->pd, ctx->buffer, ctx->buffer_size, mr_flags);
         if (!ctx->mr) {
             fprintf(stderr, "Failed to register memory\n");
-            goto cleanup;
+            cleanup_rdma_init_resources(ctx, dev_list);
+            return -1;
         }
         printf("Regular memory registered with IB\n");
     }
     
     if (!ctx->mr) {
         fprintf(stderr, "No memory could be registered\n");
-        goto cleanup;
+        cleanup_rdma_init_resources(ctx, dev_list);
+        return -1;
     }
     
     // Create QP
@@ -199,19 +222,12 @@ int init_rdma_resources(rdma_context_t *ctx, const char *ib_dev_name) {
     ctx->qp = ibv_create_qp(ctx->pd, &qp_init_attr);
     if (!ctx->qp) {
         fprintf(stderr, "Failed to create QP\n");
-        goto cleanup;
+        cleanup_rdma_init_resources(ctx, dev_list);
+        return -1;
     }
     
     ibv_free_device_list(dev_list);
     return 0;
-    
-cleanup:
-    if (ctx->mr) ibv_dereg_mr(ctx->mr);
-    if (ctx->cq) ibv_destroy_cq(ctx->cq);
-    if (ctx->pd) ibv_dealloc_pd(ctx->pd);
-    if (ctx->ib_ctx) ibv_close_device(ctx->ib_ctx);
-    ibv_free_device_list(dev_list);
-    return -1;
 }
 
 // Socket operations for connection establishment
