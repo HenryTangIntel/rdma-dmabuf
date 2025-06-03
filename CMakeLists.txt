@@ -6,9 +6,24 @@ set(CMAKE_C_STANDARD 99)
 # Ensure POSIX functions are available
 add_definitions(-D_POSIX_C_SOURCE=200809L)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(IBVERBS REQUIRED libibverbs)
+
+# Build hl-thunk libraries before any target is built
+execute_process(
+    COMMAND /opt/habanalabs/src/hl-thunk/build.sh
+    WORKING_DIRECTORY /opt/habanalabs/src/hl-thunk
+    RESULT_VARIABLE HLTHUNK_BUILD_RESULT
+    OUTPUT_VARIABLE HLTHUNK_BUILD_OUTPUT
+    ERROR_VARIABLE HLTHUNK_BUILD_ERROR
+)
+
+if(NOT ${HLTHUNK_BUILD_RESULT} EQUAL "0")
+    message(FATAL_ERROR "Failed to build hl-thunk libraries. Error: ${HLTHUNK_BUILD_ERROR} Output: ${HLTHUNK_BUILD_OUTPUT}")
+endif()
 
 # Include directories
 include_directories(
