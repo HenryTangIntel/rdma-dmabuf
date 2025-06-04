@@ -2,7 +2,7 @@
 #ifndef RDMA_DMABUF_COMMON_H
 #define RDMA_DMABUF_COMMON_H
 
-
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
