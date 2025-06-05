@@ -149,7 +149,7 @@ Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi2 HBM
 - CMake (3.22+)
 - C++ compiler with C++11 support
 - Habana SynapseAI software stack
-- RDMA verbs libraries (`libibverbs`, `librdmacm`)
+- RDMA verbs libraries (`libibverbs`, `tcp socket` or `librdmacm`)
 
 ## Building the Project
 
