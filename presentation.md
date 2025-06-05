@@ -557,7 +557,7 @@ Client shutdown complete
 ```
         Client Side:                                Server Side:
 [Gaudi Memory] → [RDMA NIC] ----network----> [RDMA NIC] → [Gaudi Memory]
-     ✓              ✓               ✓                           ✓             ✓
+     ✓              ✓               ✓             ✓             ✓
 ```
 2. Zero CPU involvement in data path: Neither CPU touches the data  
 3. Cross-node Gaudi communication: Different machines, different NICs  
