@@ -132,13 +132,11 @@ Gaudi2 HBM → PCIe → NIC → Network → NIC → PCIe → Gaudi2 HBM
 
 1. **Hardware Architecture:**
    - Gaudi device memory is physically located on the accelerator card
-   - Memory is optimized for Gaudi/accelerator access patterns
    - No direct CPU load/store path exists to device memory
 
 2. **Cannot inspect data without special tools:**
-   - Need Gaudi kernels to process/verify data
-   - Must DMA copy to host memory for debugging
-   - Production systems process data in-place on device
+   - Must DMA copy from to host memory for debugging.
+   - Production systems process data in-place on device (CPU does not involve)
 
 
 ## Prerequisites
