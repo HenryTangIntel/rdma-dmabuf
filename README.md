@@ -160,8 +160,11 @@ mkdir -p build
 # Navigate to build directory
 cd build
 
-# Generate build files with CMake
+# Generate a release build with CMake
 cmake ..
+
+# OR Generate a debug build with CMake
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 
 # Build the project
 make
